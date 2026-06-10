@@ -14,7 +14,6 @@ BYTES_TO_GB_DIVISOR = 1024 ** 3
 
 # Model Inference Configurations
 MAX_GENERATION_LENGTH = 256
-ACCENT_MODEL_NAME = "bmd1905/vietnamese-correction-v2"
 
 # Server Configurations
 API_HOST = os.getenv("API_HOST", "127.0.0.1")
@@ -22,3 +21,4 @@ API_PORT = int(os.getenv("API_PORT", "8000"))
 
 # Dataset Paths
 DATASET_PATH = Path(__file__).parent.parent / "data" / "toxic_dataset.json"
+
