@@ -6,7 +6,7 @@ import uvicorn
 from app.core.config import DEVICE, API_HOST, API_PORT
 from app.core.model_manager import model_manager
 from app.schemas.comment import CommentCheckRequest, CommentCheckResponse
-from app.services.detector import run_inference
+from app.services.detector import run_inference, extract_toxic_spans
 from app.utils.gpu import get_gpu_diagnostics
 
 @asynccontextmanager
@@ -31,6 +31,7 @@ async def check_comment(payload: CommentCheckRequest):
     
     start_time = time.time()
     task = payload.task
+    toxic_spans = None
     
     try:
         if task == "all":
@@ -39,9 +40,12 @@ async def check_comment(payload: CommentCheckRequest):
             for t in tasks:
                 results[t] = run_inference(payload.text, t)
             result = None
+            toxic_spans = extract_toxic_spans(results["hate-spans-detection"])
         else:
             results = None
             result = run_inference(payload.text, task)
+            if task == "hate-spans-detection":
+                toxic_spans = extract_toxic_spans(result)
     except ValueError as e:
         raise HTTPException(status_code=503, detail=str(e))
         
@@ -52,6 +56,7 @@ async def check_comment(payload: CommentCheckRequest):
         task=task,
         result=result,
         results=results,
+        toxicSpans=toxic_spans,
         time_taken_seconds=round(end_time - start_time, 4)
     )
 
