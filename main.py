@@ -1,21 +1,38 @@
-from fastapi import FastAPI, HTTPException
 from contextlib import asynccontextmanager
+import logging
 import time
+
+from fastapi import FastAPI, HTTPException
 import uvicorn
 
-from app.core.config import DEVICE, API_HOST, API_PORT
+from app.core.config import API_HOST, API_PORT, DEVICE, LOG_LEVEL
 from app.core.model_manager import model_manager
 from app.schemas.comment import CommentCheckRequest, CommentCheckResponse
 from app.services.detector import run_inference, extract_toxic_spans
+from app.services.detector import run_inference
+from app.services.rabbitmq import rabbitmq_comment_detector
 from app.utils.gpu import get_gpu_diagnostics
+
+logging.basicConfig(
+    level=LOG_LEVEL,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+for handler in logging.getLogger().handlers:
+    handler.setLevel(LOG_LEVEL)
+logging.getLogger("app").setLevel(LOG_LEVEL)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Load model and tokenizer on startup
     model_manager.load_model()
-    yield
-    # Clean up on shutdown
-    model_manager.unload_model()
+    await rabbitmq_comment_detector.start()
+    try:
+        yield
+    finally:
+        # Clean up on shutdown
+        await rabbitmq_comment_detector.stop()
+        model_manager.unload_model()
 
 app = FastAPI(
     title="Vietnamese Toxic Comment Detector API",
@@ -71,4 +88,4 @@ async def health_check():
     }
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", reload=True)
+    uvicorn.run("main:app", host=API_HOST, port=API_PORT, reload=True)
