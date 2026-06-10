@@ -16,6 +16,7 @@ This repository contains a modular FastAPI-based web service to serve the **ViHa
 ## Features
 
 - **Efficient Startup:** Loads model weights and the tokenizer onto the target computing device (GPU/CUDA if available, or CPU) once during application startup.
+- **Robust Text Normalization**: Automatically converts unaccented Vietnamese slang and teencode into proper accented forms using a dedicated dataset (`toxic_dataset.json`) containing hundreds of mappings before inference.
 - **Multi-task Detection Endpoints**:
   - `toxic-speech-detection`: Checks if a comment is clean or toxic.
   - `hate-speech-detection`: Checks if a comment contains hate speech, offensive speech, or is clean.
@@ -39,6 +40,8 @@ toxic-comment-detector/
 │   │   ├── __init__.py
 │   │   ├── config.py (Config parser & global settings)
 │   │   └── model_manager.py (Model lifecycle controller)
+│   ├── data/
+│   │   └── toxic_dataset.json (Dictionary for teencode/unaccented normalization)
 │   ├── schemas/
 │   │   ├── __init__.py
 │   │   └── comment.py (Pydantic payload schemas)
@@ -47,6 +50,7 @@ toxic-comment-detector/
 │   │   └── detector.py (Inference processing logic)
 │   └── utils/
 │       ├── __init__.py
+│       ├── text_normalizer.py (Text preprocessing logic)
 │       └── gpu.py (GPU diagnostic utilities)
 ```
 
