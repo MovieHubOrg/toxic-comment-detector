@@ -43,11 +43,14 @@ toxic-comment-detector/
     ├── core/
     │   ├── config.py         # Global constants & env var loading
     │   └── model_manager.py  # ModelManager class: load/unload lifecycle
+    ├── data/
+    │   └── toxic_dataset.json # Dictionary of unaccented/teencode mapped to accented
     ├── schemas/
     │   └── comment.py        # Pydantic request/response schemas
     ├── services/
     │   └── detector.py       # run_inference() — tokenize, generate, decode
     └── utils/
+        ├── text_normalizer.py # normalize_text() — unaccented/teencode normalization
         └── gpu.py            # get_gpu_diagnostics() — CUDA info dict
 ```
 
@@ -69,9 +72,13 @@ Singleton `ModelManager` instance (`model_manager`). Responsible for:
 
 ### `app/services/detector.py`
 `run_inference(input_text: str, prefix: str) -> str`
+- Normalizes input text via `app.utils.text_normalizer.normalize_text()`
 - Prepends the task prefix: `"<prefix>: <text>"`
 - Tokenizes, runs `model.generate()` with `torch.no_grad()`
 - Decodes output with `skip_special_tokens=True`
+
+### `app/utils/text_normalizer.py`
+Loads `toxic_dataset.json` and uses regex to replace unaccented/teencode bad words with properly accented Vietnamese prior to inference.
 
 ### `app/schemas/comment.py`
 - `CommentCheckRequest`: `text: str`, `task: Literal["toxic-speech-detection", "hate-speech-detection", "hate-spans-detection", "all"]`
