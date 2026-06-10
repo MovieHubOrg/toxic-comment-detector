@@ -24,6 +24,7 @@ This repository contains a modular FastAPI-based web service to serve the **ViHa
   - `all`: Sequentially executes all three tasks and returns the combined results mapping.
 - **Diagnostics**: Health check endpoint displays environment information, including GPU memory availability and CUDA version properties.
 - **Configurable**: Environment-driven parameters loaded from a `.env` file via `python-dotenv`.
+- **RabbitMQ Integration**: Consumes comment detection jobs from RabbitMQ and publishes toxic detection results for backend processing.
 
 ---
 
@@ -44,10 +45,12 @@ toxic-comment-detector/
 │   │   └── toxic_dataset.json (Dictionary for teencode/unaccented normalization)
 │   ├── schemas/
 │   │   ├── __init__.py
-│   │   └── comment.py (Pydantic payload schemas)
+│   │   ├── comment.py (Pydantic HTTP payload schemas)
+│   │   └── rabbitmq.py (Pydantic RabbitMQ payload schemas)
 │   ├── services/
 │   │   ├── __init__.py
-│   │   └── detector.py (Inference processing logic)
+│   │   ├── detector.py (Inference processing logic)
+│   │   └── rabbitmq.py (RabbitMQ consumer and publisher)
 │   └── utils/
 │       ├── __init__.py
 │       ├── text_normalizer.py (Text preprocessing logic)
@@ -71,6 +74,13 @@ Create a `.env` file in the root folder of the project (already ignored in `.git
 ```env
 API_HOST=127.0.0.1
 API_PORT=8000
+LOG_LEVEL=INFO
+RABBITMQ_ENABLED=true
+RABBITMQ_URL=amqp://guest:guest@localhost:5672/
+RABBITMQ_RECONNECT_SECONDS=5
+TOXIC_COMMENT_DETECTOR_QUEUE=TOXIC_COMMENT_DETECTOR_QUEUE
+UPDATE_VIDEO_QUEUE=UPDATE_VIDEO_QUEUE
+RABBITMQ_RESPONSE_APP=TOXIC_COMMENT_DETECTOR
 ```
 
 ### 3. Launch Server
@@ -129,6 +139,35 @@ Once started, access the interactive Swagger UI to test requests:
     "device_count": 1,
     "memory_capacity_gb": 4,
     "cuda_version": "12.1"
+  }
+}
+```
+
+### RabbitMQ Comment Detection
+
+When `RABBITMQ_ENABLED=true`, the service consumes messages from `TOXIC_COMMENT_DETECTOR_QUEUE`.
+RabbitMQ payloads use the generic envelope `BaseMessage[T]`, where `data` is typed per command.
+
+Input message:
+```json
+{
+  "cmd": "CMD_DETECTOR_COMMENT",
+  "app": "BACKEND_APP",
+  "data": {
+    "content": "Phim hay 1",
+    "comment_id": 9567938084306944
+  }
+}
+```
+
+The service first runs `toxic-speech-detection`. If the result is `toxic`, it runs `hate-spans-detection` and publishes this message to `UPDATE_VIDEO_QUEUE`:
+```json
+{
+  "cmd": "CMD_DONE_DETECTOR_COMMENT",
+  "app": "TOXIC_COMMENT_DETECTOR",
+  "data": {
+    "comment_id": 9567938084306944,
+    "content": "[hate]...detected toxic spans...[hate]"
   }
 }
 ```
