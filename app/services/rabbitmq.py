@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urlparse
 
 from aio_pika import DeliveryMode, IncomingMessage, Message, connect_robust
@@ -22,7 +22,7 @@ from app.schemas.rabbitmq import (
     DoneDetectorCommentData,
     DoneDetectorCommentMessage,
 )
-from app.services.detector import run_inference
+from app.services.detector import extract_toxic_spans, run_inference
 
 logger = logging.getLogger(__name__)
 
@@ -156,12 +156,13 @@ class RabbitMQCommentDetector:
             content,
             HATE_SPANS_DETECTION_TASK,
         )
-        await self._publish_detection_result(comment_id, detected_content)
+        toxic_spans = extract_toxic_spans(detected_content)
+        await self._publish_detection_result(comment_id, toxic_spans)
 
     async def _publish_detection_result(
         self,
         comment_id: Union[int, str],
-        detected_content: str,
+        toxic_spans: List[Dict[str, int]],
     ) -> None:
         if self._channel is None:
             raise RuntimeError("RabbitMQ channel is not available.")
@@ -171,7 +172,7 @@ class RabbitMQCommentDetector:
             app=RABBITMQ_RESPONSE_APP,
             data=DoneDetectorCommentData(
                 comment_id=comment_id,
-                content=detected_content,
+                toxic_spans=toxic_spans,
             ),
         )
         body = json.dumps(

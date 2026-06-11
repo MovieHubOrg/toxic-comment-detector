@@ -1,4 +1,4 @@
-from typing import Generic, Optional, TypeVar, Union
+from typing import Dict, Generic, List, Optional, TypeVar, Union
 
 from pydantic import BaseModel, Field
 
@@ -18,7 +18,7 @@ class DetectorCommentData(BaseModel):
 
 class DoneDetectorCommentData(BaseModel):
     comment_id: Union[int, str]
-    content: str
+    toxic_spans: List[Dict[str, int]]
 
 
 class DetectorCommentMessage(BaseMessage[DetectorCommentData]):
