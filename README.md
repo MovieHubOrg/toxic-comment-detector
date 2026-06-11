@@ -160,14 +160,19 @@ Input message:
 }
 ```
 
-The service first runs `toxic-speech-detection`. If the result is `toxic`, it runs `hate-spans-detection` and publishes this message to `UPDATE_VIDEO_QUEUE`:
+The service first runs `toxic-speech-detection`. If the result is `toxic`, it runs `hate-spans-detection`, extracts span indexes, and publishes this message to `UPDATE_VIDEO_QUEUE`:
 ```json
 {
   "cmd": "CMD_DONE_DETECTOR_COMMENT",
   "app": "TOXIC_COMMENT_DETECTOR",
   "data": {
     "comment_id": 9567938084306944,
-    "content": "[hate]...detected toxic spans...[hate]"
+    "toxic_spans": [
+      {
+        "start": 0,
+        "end": 4
+      }
+    ]
   }
 }
 ```
